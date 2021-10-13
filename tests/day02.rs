@@ -1,5 +1,3 @@
-use std::{convert::TryInto, str::FromStr};
-
 const INPUT: &str = include_str!("res/02.txt");
 
 #[derive(Debug)]
