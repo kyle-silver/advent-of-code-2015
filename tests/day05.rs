@@ -77,8 +77,6 @@ fn nicer(token: &str) -> bool {
 
 #[test]
 fn part2() {
-    // let chars: Vec<char> = "aabcdefgaa".chars().collect();
-    // println!("{}", double_double(&chars));
     let ans = INPUT.lines().map(nicer).filter(|b| *b).count();
     println!("Day 5, part 2: {}", ans);
 }
