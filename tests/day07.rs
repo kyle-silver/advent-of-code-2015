@@ -20,6 +20,8 @@ impl Arg {
         }
     }
 
+    /// converting the registers from names to usize values keeps us from
+    /// needing to use a hashmap and having `String`s flying around everywhere
     fn reg_addr(reg_name: &str) -> usize {
         let mut reg_addr: usize = 0;
         for (i, c) in reg_name.chars().rev().enumerate() {
@@ -70,14 +72,14 @@ impl Op {
         }
     }
 
-    fn dependencies(&self) -> Vec<Arg> {
+    fn dependencies(&self) -> Vec<&Arg> {
         match self {
-            Op::Write(arg) => vec![arg.clone()],
-            Op::And(a1, a2) => vec![a1.clone(), a2.clone()],
-            Op::Or(a1, a2) => vec![a1.clone(), a2.clone()],
-            Op::Not(a) => vec![a.clone()],
-            Op::LeftShift { reg, bits } => vec![reg.clone(), bits.clone()],
-            Op::RightShift { reg, bits } => vec![reg.clone(), bits.clone()],
+            Op::Write(arg) => vec![arg],
+            Op::And(a1, a2) => vec![a1, a2],
+            Op::Or(a1, a2) => vec![a1, a2],
+            Op::Not(a) => vec![a],
+            Op::LeftShift { reg, bits } => vec![reg, bits],
+            Op::RightShift { reg, bits } => vec![reg, bits],
         }
     }
 
@@ -86,7 +88,7 @@ impl Op {
             .into_iter()
             .filter_map(|a| match a {
                 Arg::Literal(_) => None,
-                Arg::Register(addr) => Some(addr),
+                Arg::Register(addr) => Some(*addr),
             })
             .collect()
     }
@@ -137,28 +139,26 @@ impl CircuitBoard {
 }
 
 #[derive(Debug)]
-struct DependencyGraph {
-    instructions: Vec<Instruction>,
+struct DependencyGraph<'a> {
+    instructions: Vec<&'a Instruction>,
 }
 
-impl DependencyGraph {
-    fn new(mut input: HashSet<Instruction>) -> DependencyGraph {
+impl DependencyGraph<'_> {
+    fn new(input: &[Instruction]) -> DependencyGraph {
+        let mut unused: HashSet<&Instruction> = input.iter().collect();
+        let mut dependencies = HashMap::new();
         let mut instructions = Vec::new();
-        let mut deps = HashMap::new();
-        while !input.is_empty() {
-            let next = input
-                .iter()
-                .find(|instr| {
-                    instr
-                        .op
-                        .dependencies()
-                        .iter()
-                        .all(|d| Self::_ready(d, &deps))
-                })
-                .cloned();
-            if let Some(instr) = next {
-                input.remove(&instr);
-                deps.insert(instr.destination, instr.op.registers_used());
+        while !unused.is_empty() {
+            let next = unused.iter().find(|instr| {
+                instr
+                    .op
+                    .dependencies()
+                    .iter()
+                    .all(|d| Self::_ready(d, &dependencies))
+            });
+            if let Some(&instr) = next {
+                unused.remove(&instr);
+                dependencies.insert(instr.destination, instr.op.registers_used());
                 instructions.push(instr);
             }
         }
@@ -176,10 +176,10 @@ impl DependencyGraph {
 #[test]
 fn part1() {
     // gather up the instructions
-    let instructions: HashSet<_> = INPUT.lines().map(Instruction::parse).collect();
-    // it appears we need to construct a dependency graph to figure out the
-    // execution order... great...
-    let graph = DependencyGraph::new(instructions);
+    let instructions: Vec<_> = INPUT.lines().map(Instruction::parse).collect();
+    // we need to construct a dependency graph to figure out the execution
+    // order... great...
+    let graph = DependencyGraph::new(&instructions);
     // now we can iterate over the instructions in order and evaluate what's
     // going on
     let mut circuit_board = CircuitBoard::new();
@@ -187,23 +187,21 @@ fn part1() {
         circuit_board.update(instr);
     }
     println!("Day 7, part 1: {}", circuit_board.0[Arg::reg_addr("a")]);
+    assert_eq!(3176, circuit_board.0[Arg::reg_addr("a")]);
 }
 
 #[test]
 fn part2() {
-    let mut instructions: HashSet<_> = INPUT.lines().map(Instruction::parse).collect();
-    instructions.remove(&Instruction {
-        op: Op::Write(Arg::Literal(44430)),
-        destination: Arg::reg_addr("b"),
-    });
-    instructions.insert(Instruction {
+    let mut instructions: Vec<_> = INPUT.lines().map(Instruction::parse).collect();
+    instructions[3] = Instruction {
         op: Op::Write(Arg::Literal(3176)),
         destination: Arg::reg_addr("b"),
-    });
-    let graph = DependencyGraph::new(instructions);
+    };
+    let graph = DependencyGraph::new(&instructions);
     let mut circuit_board = CircuitBoard::new();
     for instr in &graph.instructions {
         circuit_board.update(instr);
     }
     println!("Day 7, part 2: {}", circuit_board.0[Arg::reg_addr("a")]);
+    assert_eq!(14710, circuit_board.0[Arg::reg_addr("a")]);
 }
