@@ -3,6 +3,7 @@
         "deps",
         "LSHIFT",
         "peekable",
+        "reencoded",
         "RSHIFT"
     ]
 }
