@@ -3,7 +3,9 @@
         "deps",
         "LSHIFT",
         "peekable",
+        "prevs",
         "reencoded",
-        "RSHIFT"
+        "RSHIFT",
+        "vals"
     ]
 }
