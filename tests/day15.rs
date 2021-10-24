@@ -14,12 +14,14 @@ impl ComboSummator {
     fn combos(&mut self, target: i64, n: usize) -> Vec<Vec<i64>> {
         // base cases
         if n == 0 {
-            self.0.insert((target, n), vec![vec![]]);
-            return self.0.get(&(target, n)).unwrap().clone();
+            return vec![vec![]];
         }
         if n == 1 {
-            self.0.insert((target, n), vec![vec![target]]);
-            return self.0.get(&(target, n)).unwrap().clone();
+            return self
+                .0
+                .entry((target, n))
+                .or_insert_with(|| vec![vec![target]])
+                .clone();
         }
         // memoized solution
         if let Some(combos) = self.0.get(&(target, n)) {
