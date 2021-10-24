@@ -132,8 +132,4 @@ fn part2() {
         .unwrap();
     println!("Day 15, part 2: {}", ans);
     assert_eq!(11171160, ans);
-    println!(
-        "Size of the memoized solution in memory: {} bytes",
-        std::mem::size_of(&combo_summator)
-    );
 }
