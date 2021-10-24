@@ -63,7 +63,7 @@ fn part1() {
 #[test]
 fn part2() {
     let mut reindeer = INPUT.lines().map(Reindeer::parse).collect_vec();
-    for i in 1..2503 {
+    for i in 1..=2503 {
         let lead = reindeer.iter().map(|r| r.position_at(i)).max().unwrap();
         reindeer
             .iter_mut()
