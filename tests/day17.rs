@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{btree_map::Entry, BTreeMap, BTreeSet};
 
 const INPUT: &str = include_str!("res/17.txt");
 
@@ -12,50 +12,57 @@ struct Container {
 
 type Containers = BTreeSet<Container>;
 
-struct Combinator(BTreeMap<(Volume, Containers), BTreeSet<Containers>>);
+struct Combinator {
+    cache: BTreeMap<Volume, BTreeMap<Containers, BTreeSet<Containers>>>,
+}
 
 impl Combinator {
     fn new() -> Combinator {
-        Combinator(BTreeMap::new())
+        Combinator {
+            cache: BTreeMap::new(),
+        }
+    }
+
+    fn insert(&mut self, volume: Volume, containers: Containers, value: BTreeSet<Containers>) {
+        match self.cache.entry(volume) {
+            Entry::Vacant(entry) => {
+                let mut sub_map = BTreeMap::new();
+                sub_map.insert(containers, value);
+                entry.insert(sub_map);
+            }
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().insert(containers, value);
+            }
+        };
     }
 
     fn combinations(&mut self, volume: Volume, containers: &Containers) -> BTreeSet<Containers> {
-        if volume == 0 {
-            let mut ans = BTreeSet::new();
-            ans.insert(BTreeSet::new());
-            return ans;
-        }
-        // cached solution
-        if let Some(combos) = self.0.get(&(volume, containers.clone())) {
-            return combos.clone();
-        }
-        // base case
-        if containers.len() == 1 {
-            if volume == containers.iter().next().unwrap().volume {
-                let mut ans = BTreeSet::new();
-                ans.insert(containers.clone());
-                return ans;
-            } else {
-                return BTreeSet::new();
+        if let Some(vc) = self.cache.get(&volume) {
+            if let Some(combos) = vc.get(containers) {
+                return combos.clone();
             }
         }
-        // no cached solution
         let mut combos = BTreeSet::new();
         for container in containers {
             if container.volume > volume {
                 continue;
             }
             let sub_volume = volume - container.volume;
+            if sub_volume == 0 {
+                let mut ans = BTreeSet::new();
+                ans.insert(container.clone());
+                combos.insert(ans);
+                continue;
+            }
             let mut remaining = containers.clone();
             remaining.remove(container);
             let sub_combos = self.combinations(sub_volume, &remaining);
             for mut sub_combo in sub_combos {
                 sub_combo.insert(container.clone());
-                combos.insert(sub_combo);
+                combos.insert(sub_combo.clone());
             }
-            // println!("Final combos: {:?}", combos);
         }
-        self.0.insert((volume, containers.clone()), combos.clone());
+        self.insert(volume, containers.clone(), combos.clone());
         return combos;
     }
 }
@@ -80,7 +87,7 @@ fn base_case() {
 }
 
 #[test]
-fn part1() {
+fn problem() {
     let containers: BTreeSet<_> = INPUT
         .lines()
         .map(|c| c.parse().unwrap())
@@ -89,5 +96,13 @@ fn part1() {
         .collect();
     let mut combinator = Combinator::new();
     let combos = combinator.combinations(150, &containers);
-    println!("{:?}", combos.len());
+    println!("Day 17, part 1: {}", combos.len());
+    assert_eq!(1638, combos.len());
+    let min_containers = combos.iter().map(BTreeSet::len).min().unwrap();
+    let min_container_count = combos
+        .iter()
+        .map(BTreeSet::len)
+        .filter(|len| *len == min_containers)
+        .count();
+    println!("Day 17, part 2: {}", min_container_count);
 }
